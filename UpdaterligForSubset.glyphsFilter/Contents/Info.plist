@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>plugin</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.hugojourdan.UpdaterligForSubset</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Update rlig for subset</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string> <!-- 1.0 -->
+	<key>CFBundleVersion</key>
+	<string>1</string> <!-- 123 -->
+	<key>UpdateFeedURL</key>
+	<string>https://github.com/hugojourdan/update-rlig-for-subset/blob/master/UpdaterligForSubset.glyphsFilter/Contents/Info.plist</string>
+	<key>productPageURL</key>
+	<string>https://github.com/hugojourdan/update-rlig-for-subset</string>
+	<key>productReleaseNotes</key>
+	<string>Initial Release</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright, Hugo Jourdan, 2024</string>
+	<key>NSPrincipalClass</key>
+	<string>UpdaterligForSubset</string>
+	<key>PyMainFileNames</key>
+	<array>
+		<string>plugin.py</string>
+	</array>
+</dict>
+</plist>
