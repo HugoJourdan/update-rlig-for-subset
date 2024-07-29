@@ -17,6 +17,24 @@ import re
 from GlyphsApp import *
 from GlyphsApp.plugins import *
 
+def get_auto_subsetted_axes(instance):
+	font = instance.font
+	if instance.customParameters["Disable Masters"]:
+		disable_masters = instance.customParameters["Disable Masters"]
+
+		axis_values = {i:set() for i, _ in enumerate(font.axes)}
+		for master in font.masters:
+			if master.name in disable_masters:
+				pass
+			else:
+				for i, axis_value in enumerate(master.internalAxesValues):
+					axis_values[i].add(axis_value)
+		axes_kept = [axis.axisTag for i, axis in enumerate(font.axes) if len(axis_values[i]) != 1]
+
+		return axes_kept
+	else:
+		return [axis.axisTag for axis in font.axes]
+
 
 class UpdaterligForSubset(FilterWithoutDialog):
 	
@@ -30,8 +48,11 @@ class UpdaterligForSubset(FilterWithoutDialog):
 	@objc.python_method
 	def filter(self, layer, inEditView, customParameters):
 		
+
 		
-		axis_list = customParameters[0].split(',') if customParameters else []
+
+
+		axis_list = customParameters[0].split(',') if customParameters else "auto"
 
 		font = layer.font()
 
@@ -40,9 +61,13 @@ class UpdaterligForSubset(FilterWithoutDialog):
 
 		for instance in font.instances:
 			if instance.type == 0:
-				
+
 				input_string = font.features["rlig"].code
-				myTags = axis_list
+
+				if instance.customParameters["Disable Masters"] and customParameters[0] == "auto":
+					myTags = get_auto_subsetted_axes(instance)
+				else:
+					myTags = axis_list
 
 				# Function to extract tags from a condition line, excluding the word "condition"
 				def extract_tags(condition):
