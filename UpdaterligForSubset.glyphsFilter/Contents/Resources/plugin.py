@@ -47,28 +47,22 @@ class UpdaterligForSubset(FilterWithoutDialog):
 
 	@objc.python_method
 	def filter(self, layer, inEditView, customParameters):
-		
-
-		
-
+	
 
 		axis_list = customParameters[0].split(',') if customParameters else "auto"
-
 		font = layer.font()
 
 		if layer.parent != font.glyphs[0]:
 			return
 
 		for instance in font.instances:
-			if instance.type == 0:
-
+			if instance.type == 1 and instance.active:
 				input_string = font.features["rlig"].code
 
 				if instance.customParameters["Disable Masters"] and customParameters[0] == "auto":
 					myTags = get_auto_subsetted_axes(instance)
 				else:
 					myTags = axis_list
-
 				# Function to extract tags from a condition line, excluding the word "condition"
 				def extract_tags(condition):
 					return [tag for tag in re.findall(r'[a-zA-Z]+', condition) if tag != "condition"]
@@ -106,6 +100,7 @@ class UpdaterligForSubset(FilterWithoutDialog):
 								inside_condition_block = True
 								current_block.append(line)
 					else:
+						print(line)
 						filtered_output.append(line)
 
 				# Check for the last condition block
@@ -116,11 +111,14 @@ class UpdaterligForSubset(FilterWithoutDialog):
 
 				if not "#endif" in filtered_output:
 					filtered_output.append("#endif")
+
 				# Join the filtered output lines to form the final string
 				filtered_string = '\n'.join(filtered_output)
 
 				if font.features["rlig"].code != filtered_string:
 					font.features["rlig"].code = filtered_string
+
+				print(filtered_string)
 
 
 	@objc.python_method
