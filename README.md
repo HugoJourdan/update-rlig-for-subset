@@ -2,11 +2,11 @@
 
 Update rlig For Subset PreFilter to remove conditions involving axes not present in a specified list.
 
-Usage: Add `UpdatereligForSubset” as a PreFilter in Glyphs in a Variable Instance, with a list of axis tags you want to keep.
+Usage: Add `UpdaterligForSubset” as a PreFilter in Glyphs in a Variable Instance, with a list of axis tags you want to keep.
 
-Example: `UpdatereligForSubset;wght,slnt` will remove all conditions where an axis different from wght or slnt is involved.
+Example: `UpdaterligForSubset;wght,slnt` will remove all conditions where an axis different from wght or slnt is involved.
 
-So if you use `UpdatereligForSubset;wght` and your rlig code looks like:
+So if you use `UpdaterligForSubset;wght` and your rlig code looks like:
 
 ````markdown
 #ifdef VARIABLE
@@ -29,7 +29,7 @@ sub dollar by dollar.rlig;
 
 ## Auto-Mode
 
-You can also type `UpdatereligForSubset;` without an argument or `UpdatereligForSubset;auto`.
+You can also type `UpdatreligForSubset;` without an argument or `UpdaterligForSubset;auto`.
 
 If a custom parameter `Disable Masters` is set, it will analyze the remaining masters and retain only the axes kept at export.
 
