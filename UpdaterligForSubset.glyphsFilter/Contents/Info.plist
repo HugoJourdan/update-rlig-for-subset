@@ -13,15 +13,15 @@
 	<key>CFBundleName</key>
 	<string>Update rlig for subset</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string> <!-- 1.0 -->
+	<string>1.1</string> <!-- 1.1 -->
 	<key>CFBundleVersion</key>
-	<string>1</string> <!-- 123 -->
+	<string>2</string> <!-- 123 -->
 	<key>UpdateFeedURL</key>
 	<string>https://github.com/hugojourdan/update-rlig-for-subset/blob/master/UpdaterligForSubset.glyphsFilter/Contents/Info.plist</string>
 	<key>productPageURL</key>
 	<string>https://github.com/hugojourdan/update-rlig-for-subset</string>
 	<key>productReleaseNotes</key>
-	<string>Initial Release</string>
+	<string>Fix variable fonts losing their whole GSUB when several variable instances are exported.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright, Hugo Jourdan, 2024</string>
 	<key>NSPrincipalClass</key>
