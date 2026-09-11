@@ -132,6 +132,91 @@ check("a lookup definition body is not read as an unconditional rule",
              ["wght"], {}),
       "lookup L {\nsub a by a.alt;\n} L;\n#ifdef VARIABLE\ncondition 100 < wght;\nsub a by a.alt;\n#endif")
 
+# The shape issue #2 reports: the whole feature lives inside `#ifdef VARIABLE`, so there is no
+# unconditional copy of the rules to fall back on and a dropped block loses them outright.
+MONO_RLIG = "\n".join([
+    "#ifdef VARIABLE",
+    "",
+    "condition 180 < wght;",
+    "sub dollar by dollar.rlig;",
+    "",
+    "condition 180 < wght, 0.4 < MONO;",
+    "sub Q by Q.rlig;",
+    "",
+    "condition 0.4 < MONO;",
+    "sub at by at.rlig;",
+    "sub at.case by at.case.rlig;",
+    "",
+    "#endif",
+])
+# MONO wdth wght slnt, as the report has them; wdth is not in this font's masters.
+RANGES = {"MONO": (0.0, 1.0), "wght": (30.0, 900.0), "slnt": (-10.0, 0.0)}
+
+
+def conditions(code):
+    return [line.strip() for line in code.split("\n") if line.strip().startswith("condition")]
+
+
+print("\nmono variable font, MONO pinned to 1 (issue #2):")
+mono = update(MONO_RLIG, ["wght", "slnt"], {"MONO": 1.0}, RANGES)
+check("the satisfied block is hung on the weight axis instead of dropped", conditions(mono),
+      ["condition 180 < wght;", "condition 180 < wght;", "condition 30 < wght;"])
+check("its rules survive", [l for l in mono.split("\n") if l.startswith("sub at")],
+      ["sub at by at.rlig;", "sub at.case by at.case.rlig;"])
+check("mono idempotent", update(mono, ["wght", "slnt"], {"MONO": 1.0}, RANGES), mono)
+
+print("\nthe same font pinned to MONO=0 (the condition is false there):")
+prop = update(MONO_RLIG, ["wght", "slnt"], {"MONO": 0.0}, RANGES)
+check("only the weight-gated block is left", conditions(prop), ["condition 180 < wght;"])
+check("the mono rules are gone", "at.rlig" in prop, False)
+check("prop idempotent", update(prop, ["wght", "slnt"], {"MONO": 0.0}, RANGES), prop)
+
+print("\nwhat the full-range fallback needs:")
+SATISFIED = "#ifdef VARIABLE\ncondition 0.4 < MONO;\nsub at by at.rlig;\n#endif"
+check("with every axis pinned there is nothing to hang the condition on",
+      update(SATISFIED, [], {"MONO": 1.0}, RANGES), "")
+check("a kept axis with no known range is no help either",
+      update(SATISFIED, ["wght"], {"MONO": 1.0}, {}), "")
+check("no range information at all leaves the old behaviour",
+      update(SATISFIED, ["wght"], {"MONO": 1.0}), "")
+check("a negative design minimum is written the way a source would",
+      update(SATISFIED, ["slnt"], {"MONO": 1.0}, {"slnt": (-10.0, 0.0)}),
+      "#ifdef VARIABLE\ncondition -10 < slnt;\nsub at by at.rlig;\n#endif")
+check("a fractional design minimum keeps its decimals",
+      update(SATISFIED, ["opsz"], {"MONO": 1.0}, {"opsz": (5.5, 72.0)}),
+      "#ifdef VARIABLE\ncondition 5.5 < opsz;\nsub at by at.rlig;\n#endif")
+check("the indent of the condition line is kept",
+      update("#ifdef VARIABLE\n\tcondition 0.4 < MONO;\n\tsub at by at.rlig;\n#endif",
+             ["wght"], {"MONO": 1.0}, RANGES),
+      "#ifdef VARIABLE\n\tcondition 30 < wght;\n\tsub at by at.rlig;\n#endif")
+
+print("\nthe fallback does not resurrect the GSUB the sanitiser rejects:")
+# The rules this block would carry everywhere are already what the feature does unconditionally, so an
+# alternate feature table identical to the default one is exactly what GlyphsApp mis-serialises.
+check("a block that only repeats the plain feature is still dropped",
+      update("lookup L {\nsub a by a.alt;\n} L;\nlookup L;\n"
+             "#ifdef VARIABLE\ncondition 0.4 < MONO;\nlookup L;\n#endif",
+             ["wght"], {"MONO": 1.0}, RANGES),
+      "lookup L {\nsub a by a.alt;\n} L;\nlookup L;")
+
+print("\npassing ranges changes nothing where no block was being dropped:")
+for name, kept, pinned in [("INKT=0", ["wght"], {"INKT": 0.0}),
+                           ("INKT=1", ["wght"], {"INKT": 1.0}),
+                           ("full", ["INKT", "wght"], {})]:
+    check("%s unchanged" % name, update(RLIG, kept, pinned, {"wght": (30.0, 900.0), "INKT": (0.0, 1.0)}),
+          update(RLIG, kept, pinned))
+
+print("\naxis summary:")
+_font = types.SimpleNamespace(
+    axes=[types.SimpleNamespace(axisTag=tag) for tag in ("MONO", "wght", "slnt")],
+    masters=[types.SimpleNamespace(internalAxesValues=values)
+             for values in ([1, 30, 0], [1, 900, 0], [1, 900, -10])],
+)
+_kept, _pinned, _ranges = plugin.axis_summary(_font)
+check("the single-value axis is pinned", (_kept, _pinned), (["wght", "slnt"], {"MONO": 1.0}))
+check("every axis reports its design range", _ranges,
+      {"MONO": (1.0, 1.0), "wght": (30.0, 900.0), "slnt": (-10.0, 0.0)})
+
 print("\narguments:")
 check("semicolon form", plugin.parse_axis_argument({0: "wght", 1: "slnt"}), ["wght", "slnt"])
 check("comma form", plugin.parse_axis_argument({0: "wght,slnt"}), ["wght", "slnt"])

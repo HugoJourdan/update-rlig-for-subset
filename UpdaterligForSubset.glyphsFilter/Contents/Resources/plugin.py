@@ -39,6 +39,9 @@ def axis_summary(font):
     `font` is the copy GlyphsApp built for the instance currently exporting, so its masters already
     reflect that instance's `Disable Masters`. Reading the axes off those masters is what keeps one
     variable instance from being subsetted with another instance's axis list.
+
+    The design range each axis spans comes back too: a condition that has to cover a whole axis needs
+    that axis's design minimum to name it.
     """
     tags = [axis.axisTag for axis in font.axes]
     values = [set() for _ in tags]
@@ -47,14 +50,16 @@ def axis_summary(font):
         for index in range(min(len(tags), len(master_values))):
             values[index].add(round(float(master_values[index]), 6))
 
-    kept, pinned = [], {}
+    kept, pinned, ranges = [], {}, {}
     for index, tag in enumerate(tags):
+        if values[index]:
+            ranges[tag] = (min(values[index]), max(values[index]))
         if len(values[index]) == 1:
             pinned[tag] = next(iter(values[index]))
         else:
             # No masters at all also lands here; keeping the axis is the safe reading.
             kept.append(tag)
-    return kept, pinned
+    return kept, pinned, ranges
 
 
 def parse_axis_argument(customParameters):
@@ -104,7 +109,29 @@ def unconditional_rules(lines):
     return rules
 
 
-def rewrite_condition(line, kept_tags, pinned):
+def format_design_value(value):
+    """Write a design coordinate the way a source does, without a decimal tail on whole numbers."""
+    value = float(value)
+    if value == int(value):
+        return "%d" % int(value)
+    return ("%.6f" % value).rstrip("0").rstrip(".") or "0"
+
+
+def full_range_condition(kept_tags, ranges):
+    """A clause covering one kept axis end to end, or None if no kept axis has a known range.
+
+    `30 < wght` on an axis whose design minimum is 30 spans the whole axis, because GlyphsApp reads the
+    bound as inclusive. It normalises to a `ConditionSet` that is empty, which is how OpenType spells
+    "applies at every location".
+    """
+    for tag in kept_tags:
+        bounds = (ranges or {}).get(tag)
+        if bounds is not None:
+            return "%s < %s" % (format_design_value(bounds[0]), tag)
+    return None
+
+
+def rewrite_condition(line, kept_tags, pinned, ranges=None):
     """Rewrite one `condition` line for the axes this export keeps, or None to drop its block.
 
     A clause on a pinned axis is decided here rather than thrown away: `INKT < 0.5` is simply true in a
@@ -137,9 +164,15 @@ def rewrite_condition(line, kept_tags, pinned):
         # True everywhere in this export, so the clause carries no information any more.
 
     if not clauses:
-        # Every axis was pinned and satisfied, so the rules below are unconditional. They still run via
-        # the feature's own unconditional copy; a condition-less block is not expressible here.
-        return None
+        # Every clause was on a pinned axis and every one held, so these rules apply at every location
+        # this export can reach. Dropping the block only keeps them when the feature lists the same
+        # rules outside the `#ifdef` as well; a feature that lives entirely inside one loses them
+        # outright. Hang the block on a kept axis over its full design range instead, which is the
+        # closest a `condition` line comes to saying "everywhere".
+        everywhere = full_range_condition(kept_tags, ranges)
+        if everywhere is None:
+            return None  # Every axis is pinned, so there is no axis left to hang a condition on.
+        clauses = [everywhere]
 
     indent = line[: len(line) - len(line.lstrip())]
     return "%scondition %s;" % (indent, ", ".join(clauses))
@@ -167,7 +200,7 @@ def block_rules(block):
     return [line.strip() for line in block[1:] if line.strip() and not line.strip().startswith("#")]
 
 
-def update_feature_code(code, kept_tags, pinned):
+def update_feature_code(code, kept_tags, pinned, ranges=None):
     """Drop the conditions this export cannot satisfy, and the `#ifdef VARIABLE` blocks left hollow."""
     lines = code.split("\n")
     unconditional = unconditional_rules(lines)
@@ -190,7 +223,7 @@ def update_feature_code(code, kept_tags, pinned):
         preamble, blocks = split_blocks(lines[index + 1:end])
         kept = []
         for block in blocks:
-            condition = rewrite_condition(block[0], kept_tags, pinned)
+            condition = rewrite_condition(block[0], kept_tags, pinned, ranges)
             if condition is not None:
                 kept.append([condition] + block[1:])
         segments.append(("variable", line, preamble, kept, closing))
@@ -245,12 +278,12 @@ class UpdaterligForSubset(FilterWithoutDialog):
         if feature is None:
             return
 
-        kept_tags, pinned = axis_summary(font)
+        kept_tags, pinned, ranges = axis_summary(font)
         requested = parse_axis_argument(customParameters)
         if requested is not None:
             kept_tags = [tag for tag in kept_tags if tag in requested]
 
-        updated = update_feature_code(feature.code, kept_tags, pinned)
+        updated = update_feature_code(feature.code, kept_tags, pinned, ranges)
         if feature.code != updated:
             feature.code = updated
             print(
