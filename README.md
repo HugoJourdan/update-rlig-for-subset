@@ -48,6 +48,21 @@ and the condition is judged against that value:
 Earlier versions dropped the block in both cases, which silently cost the INKT=0 subset its
 `dollar.rlig` / `cent.rlig` substitutions.
 
+When *every* clause of a condition is settled that way and all of them hold, the rules apply at every
+location the export can reach — but a condition line with nothing left in it cannot be written. The
+block is re-hung on an axis that survived, over that axis's full design range:
+
+- `condition 0.4 < MONO;` in a VF pinned to `MONO=1` that still varies `wght` from 30 to 900 becomes
+  `condition 30 < wght;`. GlyphsApp reads the bound as inclusive, so the condition covers the whole
+  weight axis and is written as a `FeatureVariationRecord` with an empty `ConditionSet` — OpenType for
+  "applies everywhere".
+
+Dropping the block instead only preserved the rules when the feature repeated them outside the
+`#ifdef VARIABLE`. A feature that lives entirely inside one lost them.
+
+If no axis survives — every axis pinned — there is nothing to hang a condition on and the block is
+still dropped.
+
 ## Why a block is sometimes removed entirely
 
 Two shapes of output make GlyphsApp emit a broken `GSUB`, so the filter never produces them:
